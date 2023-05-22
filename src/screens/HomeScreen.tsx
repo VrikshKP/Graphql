@@ -1,23 +1,42 @@
-import {useQuery} from '@apollo/client';
-import React from 'react';
-import {FlatList, Text, View} from 'react-native';
-import {GET_CHAR} from '../queries/queries';
+import { useLazyQuery } from '@apollo/client';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Text, View } from 'react-native';
+import { GET_THREADS } from '../queries/queries';
+import PostBox from '../components/PostBox';
 
 const HomeScreen = () => {
-  const {loading, error, data} = useQuery(GET_CHAR);
-  console.log('Home----', data?.Page?.characters);
+  const [getThreads, { loading, error, variables }] = useLazyQuery(GET_THREADS);
+  const [posts, setPosts] = useState([])
+
+  useEffect(() => {
+    fetchPosts()
+  }, [])
+
+  const fetchPosts = async () => {
+    const { data } = await getThreads({ variables: { page: 1 } })
+    setPosts([...data?.Page?.threads])
+  }
+
+  const fetchMorePosts = async () => {
+    const { data } = await getThreads({ variables: { page: variables?.page + 1 } })
+    setPosts([...posts, ...data?.Page?.threads])
+  }
+
+  if (error) return <Text>{`Error! ${error}`}</Text>;
+
   return (
-    <View style={{height: '100%'}} >
+    <View style={{ height: '100%' }} >
       <FlatList
-        data={data?.Page?.characters}
-        renderItem={({item}) => {
-            console.log('item',item);
-            return(
-            <View>
-                <Text>{item.name.full}</Text>
-            </View>);
+        data={posts}
+        renderItem={({ item }) => {
+          return (
+            <PostBox postData={item} />
+          );
         }}
+        onEndReached={fetchMorePosts}
+        onEndReachedThreshold={1}
       />
+      <ActivityIndicator animating={loading} />
     </View>
   );
 };
